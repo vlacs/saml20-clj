@@ -1,6 +1,5 @@
 (ns saml20-clj.sp
   (:require [clojure.data.xml :as xml]
-            [clj-time.core :as ctime]
             [ring.util.response :refer [redirect]]
             [clj-time.core :as ctime])
   (:use [saml20-clj.shared :as shared])
@@ -47,23 +46,29 @@
                             {"AllowCreate" "false"
                              "Format" saml-format})))
 
-(defn create-request-factory
+(defn create-request-factory!
   "Creates new requests for a particular service, format, and acs-url."
   [saml-format saml-service-name acs-url]
   (fn []
     (let [current-time (ctime/now)
-          new-saml-id (next-saml-id!)]
+          new-saml-id (next-saml-id!)
+          issue-instant (shared/make-issue-instant current-time)]
       (bump-saml-id-timeout new-saml-id current-time)
-      (xml/emit-str (create-request
-                     (shared/make-issue-instant current-time)
-                     saml-format
-                     saml-service-name
-                     new-saml-id
-                     acs-url)))))
+      (xml/emit-str
+       (create-request issue-instant 
+                       saml-format
+                       saml-service-name
+                       new-saml-id
+                       acs-url)))))
 
-(defn ring-redirect-to-idp
+(defn get-idp-redirect
+  "Return Ring response for HTTP 302 redirect."
   [idp-url saml-request relay-state]
-  (redirect (str idp-url "?"
-            (shared/make-query-string {"SAMLRequest" (shared/encode-b64-str (shared/encode-gzip-str saml-request))
-                                "RelayState" (shared/encode-b64-str relay-state)}))))
+  (redirect
+   (str idp-url
+        "?"
+        (shared/saml-form-encode
+         {:SAMLRequest saml-request :RelayState relay-state}))))
+
+
 
