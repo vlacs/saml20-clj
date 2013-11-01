@@ -1,0 +1,14 @@
+{:app-name "saml20-clj"
+ :app-port 8080
+ :saml {
+    :certificate-x509 "Put Cert Here"
+        :acs {
+            :name "saml-clj.somesite.com"
+            :port 443
+            :path "/auth/saml"
+            :protocol "https"
+        }
+        :idp-url "http://www.path.to/the/idp"
+        :format "type:of:user"
+       }
+}
