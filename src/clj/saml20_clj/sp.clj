@@ -15,18 +15,16 @@
   [saml-id issue-instant]
   (dosync (alter saml-id-timeouts assoc saml-id issue-instant)))
 
-(defn next-saml-id
-  "Returns the next available saml id.
-  This function has side-effects."
+(defn next-saml-id!
+  "Returns the next available saml id."
   []
   (swap! saml-last-id inc))
 
-(defn prune-timed-out-ids
-  "Given a timeout duration, remove all SAML IDs that are older than now minus the timeout.
-  This function exists strictly for its side effects."
+(defn prune-timed-out-ids!
+  "Given a timeout duration, remove all SAML IDs that are older than now minus the timeout."
   [timeout-duration]
   (let [now (ctime/now)
-        oldest (ctime/minus timeout-duration)
+        oldest (ctime/minus now timeout-duration)
         filter-fn (partial filter (shared/make-filter-after-fn oldest))]
     (dosync (alter saml-id-timeouts filter-fn))))
 
@@ -54,9 +52,14 @@
   [saml-format saml-service-name acs-url]
   (fn []
     (let [current-time (ctime/now)
-          new-saml-id (next-saml-id)]
+          new-saml-id (next-saml-id!)]
       (bump-saml-id-timeout new-saml-id current-time)
-      (xml/emit-str (create-request (shared/make-issue-instant current-time) saml-format saml-service-name new-saml-id acs-url)))))
+      (xml/emit-str (create-request
+                     (shared/make-issue-instant current-time)
+                     saml-format
+                     saml-service-name
+                     new-saml-id
+                     acs-url)))))
 
 (defn ring-redirect-to-idp
   [idp-url saml-request relay-state]
