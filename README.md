@@ -1,35 +1,18 @@
-# aspire-auth
+# saml20-clj
 
-FIXME: description
+This is a SAML 2.0 clojure library for SSO.
 
 ## Installation
 
-Download from http://example.com/FIXME.
+Work in progress
 
 ## Usage
 
-FIXME: explanation
-
-    $ java -jar aspire-auth-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+TODO: Add something better than the REPL. :)
+    $ lein repl
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 VLACS <jdoane@vlacs.org>
 
 Distributed under the Eclipse Public License, the same as Clojure.
