@@ -26,7 +26,7 @@
   This function exists strictly for its side effects."
   [timeout-duration]
   (let [now (ctime/now)
-        oldest (ctime/minus timeout-duration)
+        oldest (ctime/minus now timeout-duration)
         filter-fn (partial filter (shared/make-filter-after-fn oldest))]
     (dosync (alter saml-id-timeouts filter-fn))))
 
