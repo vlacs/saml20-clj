@@ -3,7 +3,12 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [compojure.core :refer [defroutes ANY]]
             [clojure.edn :as edn]
-            [saml20-clj.sp :as saml-sp])
+            [saml20-clj.sp :as saml-sp]
+            [saml20-clj.shared :as saml-shared]
+            [saml20-clj.shared :as saml-shared]
+            [hiccup.core :as hiccup]
+            [hiccup.page :refer [html5]]
+            [hiccup.util :refer [escape-html]])
   (:gen-class))
 
 (def config
@@ -15,6 +20,13 @@
                             (get-in config [:saml :format])
                             (get-in config [:app-name])
                             acs-url))
+(defn basic-page [content]
+  (html5
+  [:html
+   [:head
+    [:title "Blank page"]]
+   [:body
+    [:div.body content]]]))
 
 
 (defroutes app
