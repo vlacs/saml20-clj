@@ -67,8 +67,9 @@
   (redirect
    (str idp-url
         "?"
-        (let [saml-request (shared/str-deflate saml-request)]
-          (shared/saml-form-encode
+        (let [saml-request (shared/str->deflate->base64 saml-request)
+              relay-state (shared/str->base64 relay-state)]
+          (shared/uri-query-str
             {:SAMLRequest saml-request :RelayState relay-state})))))
 
 

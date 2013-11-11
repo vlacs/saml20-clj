@@ -31,7 +31,9 @@
 
 (defroutes app
   (ANY "/" [] "<html>Hello world.</html>")
-  (ANY "/saml" [] (saml-sp/get-idp-redirect idp-url (saml-request-factory) acs-url)))
+  (ANY "/saml" [] (saml-sp/get-idp-redirect idp-url (saml-request-factory) acs-url))
+  (ANY "/saml-barf" [] (saml-request-factory))
+  )
 
 (defn -main
   "I don't do a whole lot ... yet."

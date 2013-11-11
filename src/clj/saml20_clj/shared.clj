@@ -11,6 +11,19 @@
 
 (def instant-format (ctimeformat/formatters :date-hour-minute-second))
 
+(defn read-to-end
+  [stream]
+  (let [sb (StringBuilder.)]
+    (with-open [reader (-> stream
+                           InputStreamReader.
+                           BufferedReader.)]
+      (loop [c (.read reader)]
+        (if (neg? c)
+          (str sb)
+          (do
+            (.append sb (char c))
+            (recur (.read reader))))))))
+
 (defn make-filter-after-fn
   "Creates a function for clojure.core/filter to keep all dates after
   a given date."
@@ -39,13 +52,33 @@
   [ii-date]
   (ctimeformat/unparse instant-format ii-date))
 
+
 (defn str->bytes
   [some-string]
-  (.getBytes some-string))
+  (.getBytes some-string (java.nio.charset.Charset/forName "US-ASCII")))
 
 (defn bytes->str
   [some-bytes]
-  (String. some-bytes))
+  (String. some-bytes (java.nio.charset.Charset/forName "US-ASCII")))
+
+(defn byte-deflate
+  [str-bytes]
+  (let [out (java.io.ByteArrayOutputStream.)
+        deflater (java.util.zip.DeflaterOutputStream.
+                   out
+                   (java.util.zip.Deflater. -1 true) 1024)]
+    (.write deflater str-bytes)
+    (.close deflater)
+    (.toByteArray out)))
+
+(defn byte-inflate
+  [comp-bytes]
+  (let [input (java.io.ByteArrayInputStream. comp-bytes)
+        inflater (java.util.zip.InflaterInputStream.
+                   input (java.util.zip.Inflater. true) 1024)
+        result (read-to-end inflater)]
+    (.close inflater)
+    result)) 
 
 (defn str->base64
   [base64able-string]
@@ -55,39 +88,14 @@
   [stringable-base64]
   (-> stringable-base64 str->bytes b64/decode bytes->str))
 
-(defn read-to-end
-  [stream]
-  (let [sb (StringBuilder.)]
-    (with-open [reader (-> stream
-                           InputStreamReader.
-                           BufferedReader.)]
-      (loop [c (.read reader)]
-        (if (neg? c)
-          (str sb)
-          (do
-            (.append sb (char c))
-            (recur (.read reader))))))))
+(defn str->deflate->base64
+  [deflatable-str]
+  (let [byte-str (str->bytes deflatable-str)]
+    (bytes->str (b64/encode (byte-deflate byte-str)))))
 
-(defn str-deflate
-  [deflatable-string]
-  (let [str-bytes (str->bytes deflatable-string)
-        out (java.io.ByteArrayOutputStream.)
-        deflater (java.util.zip.DeflaterOutputStream.
-                   out
-                   (java.util.zip.Deflater.) 1024)]
-    (.write deflater str-bytes)
-    (.close deflater)
-    (apply str (drop 10 (bytes->str (.toByteArray out))))))
-
-(defn str-inflate
-  [inflatable-string]
-  (let [comp-bytes (str->bytes inflatable-string)
-        input (java.io.ByteArrayInputStream. comp-bytes)
-        inflater (java.util.zip.InflaterInputStream.
-                   input (java.util.zip.Inflater.) 1024)
-        result (read-to-end inflater)]
-    (.close inflater)
-    (bytes->str result)))
+(defn uri-query-str
+  [clean-hash]
+  (form-encode clean-hash))
 
 (defn form-encode-b64
   [req]
