@@ -30,7 +30,7 @@
 
 
 (defroutes app
-  (ANY "/" [] "<html>Hello world.</html>")
+  (ANY "/" [] (basic-page "Hello world."))
   (ANY "/saml" [] (saml-sp/get-idp-redirect idp-url (saml-request-factory) acs-url))
   (ANY "/saml-barf" [] (saml-request-factory))
   )
