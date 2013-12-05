@@ -7,9 +7,13 @@
             [gzip-util.core :as gz]
             [hiccup.util :refer [escape-html]]
             [clojure.string :as str]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.zip]
+            [clojure.xml])
+  (:import [java.io ByteArrayInputStream]))
 
 (def instant-format (ctimeformat/formatters :date-hour-minute-second))
+(def charset-format (java.nio.charset.Charset/forName "UTF-8"))
 
 (defn read-to-end
   [stream]
@@ -24,11 +28,21 @@
             (.append sb (char c))
             (recur (.read reader))))))))
 
+(defn jcert->public-key
+  "Extracts a public key object from a java cert object."
+  [java-cert-obj]
+  (.getPublicKey java-cert-obj)) 
+
+(defn parse-xml-str
+  [xml-str]
+  (clojure.zip/xml-zip (clojure.xml/parse (java.io.ByteArrayInputStream. (.getBytes xml-str)))))
+
 (defn make-filter-after-fn
   "Creates a function for clojure.core/filter to keep all dates after
   a given date."
     [fdate]
-    (fn [i] (ctime/after? i fdate)))
+    (fn [i]
+      (ctime/after? (second i) fdate)))
  
 (defn clean-x509-filter
   "Turns a base64 string into a byte array to be decoded, which includes sanitization."
@@ -46,20 +60,29 @@
         fty (java.security.cert.CertificateFactory/getInstance "X.509")
         bais (new java.io.ByteArrayInputStream (bytes (b64/decode x509-byte-array)))]
     (.generateCertificate fty bais)))
- 
+
+(defn jcert->public-key
+  "Extracts a public key object from a java cert object."
+  [java-cert-obj]
+  (.getPublicKey java-cert-obj)) 
+
+(defn str->inputstream
+  "Unravels a string into an input stream so we can work with Java constructs."
+  [unravel]
+  (ByteArrayInputStream. (.getBytes unravel charset-format)))
+
 (defn make-issue-instant
   "Converts a date-time to a SAML 2.0 time string."
   [ii-date]
   (ctimeformat/unparse instant-format ii-date))
 
-
 (defn str->bytes
   [some-string]
-  (.getBytes some-string (java.nio.charset.Charset/forName "US-ASCII")))
+  (.getBytes some-string charset-format))
 
 (defn bytes->str
   [some-bytes]
-  (String. some-bytes (java.nio.charset.Charset/forName "US-ASCII")))
+  (String. some-bytes charset-format))
 
 (defn byte-deflate
   [str-bytes]
