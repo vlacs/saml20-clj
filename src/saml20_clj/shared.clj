@@ -4,7 +4,6 @@
             [clj-time.format :as ctimeformat]
             [clojure.data.codec.base64 :as b64]
             [ring.util.codec :refer [form-encode url-encode base64-encode]]
-            [gzip-util.core :as gz]
             [hiccup.util :refer [escape-html]]
             [clojure.string :as str]
             [clojure.java.io :as io]
