@@ -12,7 +12,8 @@
                  [org.clojure/data.codec "0.1.0"]
                  [hiccup "1.0.4"]
                  [clj-time "0.6.0"]
-                 [gzip-util "0.1.0-SNAPSHOT"]]
+                 [gzip-util "0.1.0-SNAPSHOT"]
+                 [org.clojure/data.zip "0.1.1"]]
   :profiles {:dev {:source-paths ["dev" "test"]
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/tools.nrepl "0.2.3"]]}})

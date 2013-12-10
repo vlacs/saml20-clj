@@ -15,6 +15,13 @@
 (def instant-format (ctimeformat/formatters :date-hour-minute-second))
 (def charset-format (java.nio.charset.Charset/forName "UTF-8"))
 
+(def status-code-success "urn:oasis:names:tc:SAML:2.0:status:Success")
+
+(defn saml-successful?
+  [id-str]
+  (if (= id-str status-code-success)
+    true false))
+
 (defn read-to-end
   [stream]
   (let [sb (StringBuilder.)]
@@ -131,4 +138,6 @@
   (-> form
       form-encode-b64
       form-encode))
+
+
 

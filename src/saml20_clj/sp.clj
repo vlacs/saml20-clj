@@ -3,7 +3,8 @@
             [clojure.xml :refer [parse]]
             [ring.util.response :refer [redirect]]
             [clj-time.core :as ctime]
-            [hiccup.core :as hiccup])
+            [hiccup.core :as hiccup]
+            [clojure.data.zip.xml :as zf])
   (:import [javax.xml.crypto]
            [javax.xml.crypto.dsig XMLSignature XMLSignatureFactory]
            [javax.xml.crypto.dom]
@@ -90,13 +91,52 @@
            (shared/uri-query-str
              {:SAMLRequest saml-request :RelayState relay-state})))))
 
+(defn pull-attrs
+  [loc attrs]
+  (zipmap attrs (map (partial zf/attr loc) attrs)))
+
+(defn response->map
+  "Parses and performs final validation of the request. An exception will be thrown if validation fails."
+  [saml-resp]
+  (prn saml-resp)
+  (let [response-attr-names [:ID :IssueInstant :InResponseTo]
+        subject-conf-names [:Recipient :NotOnOrAfter :InResponseTo]
+        saml-cond-attr-names [:NotBefore :NotOnOrAfter]
+
+        saml-status (zf/xml1-> saml-resp :samlp:Status :samlp:StatusCode)
+        saml-assertion (zf/xml1-> saml-resp :Assertion)
+        saml-subject (zf/xml1-> saml-assertion :Subject)
+        saml-issuer (zf/xml1-> saml-assertion :Issuer)
+        saml-name-id (zf/xml1-> saml-subject :NameID)
+        saml-subject-conf-data(zf/xml1-> saml-subject :SubjectConfirmation :SubjectConfirmationData)
+        saml-conditions (zf/xml1-> saml-assertion :Conditions)
+        saml-audience-restriction (zf/xml1-> saml-conditions :AudienceRestriction :Audience)]
+
+    (let [response-attrs (pull-attrs saml-resp response-attr-names)
+          status-str (zf/attr saml-status :Value)
+          issuer (zf/text saml-issuer)
+          user-identifier (zf/text saml-name-id)
+          user-type (zf/attr saml-name-id :Format)
+          conditions (pull-attrs saml-conditions saml-cond-attr-names)
+          subject-conf-attrs (pull-attrs saml-subject-conf-data subject-conf-names)
+          acs-audience (zf/text saml-audience-restriction)]
+
+      {:responding-to (:InResponseTo response-attrs)
+       :response-id (:ID response-attrs)
+       :issued-at (:IssueInstant response-attrs)
+       ;;; TODO: Validate that "now" is within saml conditions.
+       :success? (and (shared/saml-successful? status-str)
+                      (= (:NotOnOrAfter response-attrs)
+                         (:NotOnOrAfter conditions))
+                      (= (:InResponseTo response-attrs)
+                         (:InResponseTo subject-conf-attrs)))
+       :user-format user-type
+       :user-identifier user-identifier})))
+
 ;;; We might want to make this more specific, such as extracting the user type
-;;; and the associated identifier.
+;;; and t associated identifier.
 (defn parse-saml-response
   [raw-response]
-  (parse raw-response))
-
-
-
-
+  (let [parsed-zipper (clojure.zip/xml-zip (parse (shared/str->inputstream raw-response)))]
+    (response->map parsed-zipper)))
 

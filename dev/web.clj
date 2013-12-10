@@ -37,12 +37,13 @@
                                    (saml-req-factory)
                                    (:acs-url state)))
                  (POST "/saml" [& params]
-                       (let [saml-resp (:SAMLResponse params)]
-                         (basic-page
-                           (pr-str
-                             (saml-xml/validate-xml-doc
-                               saml-resp
-                               (get-in state [:saml :certificate-x509])))))))))))
+                       (let [saml-resp (:SAMLResponse params)
+                             validity (saml-xml/validate-xml-doc
+                                        saml-resp
+                                        (get-in state [:saml :certificate-x509]))
+                             request-map (saml-sp/parse-saml-response saml-resp)]
+                         ;;;(prn request-map)
+                         (basic-page (str "Valid: " validity "<br />" (escape-html (prn-str request-map)))))))))))
 
 (defn start!
   [state]
