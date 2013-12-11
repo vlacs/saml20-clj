@@ -1,6 +1,5 @@
 (ns web
-  (:require [liberator.core :refer [resource defresource]]
-            [ring.adapter.jetty :refer [run-jetty]]
+  (:require [ring.adapter.jetty :refer [run-jetty]]
             [compojure.core :refer [defroutes routes ANY GET POST]]
             [compojure.handler :as handler]
             [saml20-clj.sp :as saml-sp]

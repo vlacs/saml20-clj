@@ -98,7 +98,6 @@
 (defn response->map
   "Parses and performs final validation of the request. An exception will be thrown if validation fails."
   [saml-resp]
-  (prn saml-resp)
   (let [response-attr-names [:ID :IssueInstant :InResponseTo]
         subject-conf-names [:Recipient :NotOnOrAfter :InResponseTo]
         saml-cond-attr-names [:NotBefore :NotOnOrAfter]
@@ -126,16 +125,13 @@
        :issued-at (:IssueInstant response-attrs)
        ;;; TODO: Validate that "now" is within saml conditions.
        :success? (and (shared/saml-successful? status-str)
-                      (= (:NotOnOrAfter response-attrs)
-                         (:NotOnOrAfter conditions))
                       (= (:InResponseTo response-attrs)
                          (:InResponseTo subject-conf-attrs)))
        :user-format user-type
        :user-identifier user-identifier})))
 
-;;; We might want to make this more specific, such as extracting the user type
-;;; and t associated identifier.
 (defn parse-saml-response
+  "Does everything from parsing the verifying saml data to returning it in an easy to use map."
   [raw-response]
   (let [parsed-zipper (clojure.zip/xml-zip (parse (shared/str->inputstream raw-response)))]
     (response->map parsed-zipper)))
