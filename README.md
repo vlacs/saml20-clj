@@ -4,12 +4,11 @@ This is a SAML 2.0 clojure library for SSO.
 
 ## Installation
 
-Work in progress
+Add [saml20-clj "0.1.2"] to your project dependancies.
 
 ## Usage
 
-TODO: Add something better than the REPL. :)
-    $ lein repl
+See dev source files to see how the library works.
 
 ## License
 
