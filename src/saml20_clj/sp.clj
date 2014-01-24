@@ -69,17 +69,22 @@
 
 (defn create-request-factory
   "Creates new requests for a particular service, format, and acs-url."
-  [mutables saml-format saml-service-name acs-url]
-  (fn []
-    (let [current-time (ctime/now)
-          new-saml-id (next-saml-id! (:saml-last-id mutables))
-          issue-instant (shared/make-issue-instant current-time)]
-      (bump-saml-id-timeout! (:saml-id-timeouts mutables) new-saml-id current-time)
-      (create-request issue-instant 
-                      saml-format
-                      saml-service-name
-                      new-saml-id
-                      acs-url))))
+  ([mutables saml-format saml-service-name acs-url]
+     (create-request-factory
+      #(next-saml-id! (:saml-last-id mutables))
+      (partial bump-saml-id-timeout! (:saml-id-timeouts mutables))
+      saml-format saml-service-name acs-url))
+  ([next-saml-id-fn! bump-saml-id-timeout-fn! saml-format saml-service-name acs-url]
+     (fn request-factory []
+       (let [current-time (ctime/now)
+             new-saml-id (next-saml-id-fn!)
+             issue-instant (shared/make-issue-instant current-time)]
+         (bump-saml-id-timeout-fn! new-saml-id current-time)
+         (create-request issue-instant 
+                         saml-format
+                         saml-service-name
+                         new-saml-id
+                         acs-url)))))
 
 (defn get-idp-redirect
   "Return Ring response for HTTP 302 redirect."
