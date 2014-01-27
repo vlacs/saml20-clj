@@ -43,12 +43,6 @@
   [xml-str]
   (clojure.zip/xml-zip (clojure.xml/parse (java.io.ByteArrayInputStream. (.getBytes xml-str)))))
 
-(defn make-filter-after-fn
-  "Creates a function for clojure.core/filter to keep all dates after
-  a given date."
-    [fdate]
-    (fn [i]
-      (ctime/after? (second i) fdate)))
  
 (defn clean-x509-filter
   "Turns a base64 string into a byte array to be decoded, which includes sanitization."
@@ -138,5 +132,14 @@
       form-encode-b64
       form-encode))
 
+(defn time-since
+  [time-span]
+  (ctime/minus (ctime/now) time-span))
 
+(defn make-timeout-filter-fn
+  "Creates a function for clojure.core/filter to keep all dates after
+  a given date."
+  [timespan]
+    (fn [i]
+      (ctime/after? (second i) (time-since timespan))))
 

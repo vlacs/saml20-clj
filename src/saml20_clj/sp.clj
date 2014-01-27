@@ -18,6 +18,7 @@
         )
   (:gen-class))
 
+;;; These next 3 fns are defaults for storing SAML state in memory.
 (defn bump-saml-id-timeout!
   "Sets the current time to the provided saml-id in the saml-id-timeouts ref map.
   This function has side-effects."
@@ -32,12 +33,10 @@
 (defn prune-timed-out-ids!
   "Given a timeout duration, remove all SAML IDs that are older than now minus the timeout."
   [saml-id-timeouts timeout-duration]
-  (let [now (ctime/now)
-        oldest (ctime/minus now timeout-duration)
-        filter-fn (partial filter (shared/make-filter-after-fn oldest))]
+  (let [filter-fn
+        (partial filter (shared/make-timeout-filter-fn timeout-duration))]
     (dosync
-      (let [updated-timeouts (into {} (filter-fn @saml-id-timeouts))]
-        (ref-set saml-id-timeouts updated-timeouts)))))
+      (ref-set saml-id-timeouts (into {} (filter-fn @saml-id-timeouts))))))
 
 (defn create-request
   "Return XML elements that represent a SAML 2.0 auth request."
@@ -64,27 +63,26 @@
 (defn generate-mutables
   []
   {:saml-id-timeouts (ref {})
-   :saml-last-id (atom 0)
-   })
+   :saml-last-id (atom 0)})
 
 (defn create-request-factory
   "Creates new requests for a particular service, format, and acs-url."
   ([mutables saml-format saml-service-name acs-url]
-     (create-request-factory
-      #(next-saml-id! (:saml-last-id mutables))
-      (partial bump-saml-id-timeout! (:saml-id-timeouts mutables))
-      saml-format saml-service-name acs-url))
+   (create-request-factory
+     #(next-saml-id! (:saml-last-id mutables))
+     (partial bump-saml-id-timeout! (:saml-id-timeouts mutables))
+     saml-format saml-service-name acs-url))
   ([next-saml-id-fn! bump-saml-id-timeout-fn! saml-format saml-service-name acs-url]
-     (fn request-factory []
-       (let [current-time (ctime/now)
-             new-saml-id (next-saml-id-fn!)
-             issue-instant (shared/make-issue-instant current-time)]
-         (bump-saml-id-timeout-fn! new-saml-id current-time)
-         (create-request issue-instant 
-                         saml-format
-                         saml-service-name
-                         new-saml-id
-                         acs-url)))))
+   (fn request-factory []
+     (let [current-time (ctime/now)
+           new-saml-id (next-saml-id-fn!)
+           issue-instant (shared/make-issue-instant current-time)]
+       (bump-saml-id-timeout-fn! new-saml-id current-time)
+       (create-request issue-instant 
+                       saml-format
+                       saml-service-name
+                       new-saml-id
+                       acs-url)))))
 
 (defn get-idp-redirect
   "Return Ring response for HTTP 302 redirect."

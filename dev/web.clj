@@ -22,18 +22,21 @@
   [state]
   ;; Get mutables setup so we can setup everything else.
   (let [state (assoc state :mutables (saml-sp/generate-mutables))
-        saml-req-factory (saml-sp/create-request-factory
+        saml-req-factory! (saml-sp/create-request-factory
                            (:mutables state)
                            (get-in state [:saml :format])
                            (:app-name state)
-                           (:acs-url state))]
+                           (:acs-url state))
+        prune-fn! (partial saml-sp/prune-timed-out-ids!
+                           (get-in state [:mutables :saml-id-timeouts]))]
     (-> state
-        (assoc :saml-req-factory saml-req-factory)
+        (assoc :saml-req-factory! saml-req-factory!)
+        (assoc :timeout-pruner-fn! prune-fn!)
         (assoc :routes
                (routes
                  (GET "/saml" [] (saml-sp/get-idp-redirect
                                    (get-in state [:saml :idp-url])
-                                   (saml-req-factory)
+                                   (saml-req-factory!)
                                    (:acs-url state)))
                  (POST "/saml" [& params]
                        (let [saml-resp (:SAMLResponse params)
