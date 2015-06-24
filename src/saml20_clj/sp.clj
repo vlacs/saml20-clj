@@ -44,7 +44,7 @@
   (str
     (hiccup.page/xml-declaration "UTF-8")
     (hiccup/html
-      [:samlp:Authnrequest
+      [:samlp:AuthnRequest
        {:xmlns:samlp "urn:oasis:names:tc:SAML:2.0:protocol"
         :ID saml-id
         :Version "2.0"
@@ -54,7 +54,7 @@
         :IsPassive false
         :AssertionConsumerServiceURL acs-url}
        [:saml:Issuer
-        {:xmlns:saml "urn:oasis:names:tcSAML:2.0:assertion"}
+        {:xmlns:saml "urn:oasis:names:tc:SAML:2.0:assertion"}
         saml-service-name]
        [:samlp:NameIDPolicy
         {:AllowCreate false
