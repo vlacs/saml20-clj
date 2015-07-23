@@ -67,7 +67,7 @@
     (cc/routes
       (cc/GET "/saml/meta" [] {:status 200
                                :headers {"Content-type" "text/xml"}
-                               :body (saml-sp/metadata acs-uri cert) } )
+                               :body (saml-sp/metadata app-name acs-uri cert) } )
       (cc/GET "/saml" [& params]
            (let [url (get params :continue "/")
                  redirect (saml-sp/get-idp-redirect idp-uri
