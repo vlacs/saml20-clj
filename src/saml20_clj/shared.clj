@@ -11,7 +11,7 @@
             [clojure.xml])
   (:import [java.io ByteArrayInputStream]))
 
-(def instant-format (ctimeformat/formatters :date-hour-minute-second))
+(def instant-format (ctimeformat/formatters :date-time-no-ms))
 (def charset-format (java.nio.charset.Charset/forName "UTF-8"))
 
 (def status-code-success "urn:oasis:names:tc:SAML:2.0:status:Success")
@@ -116,6 +116,11 @@
   (let [byte-str (str->bytes deflatable-str)]
     (bytes->str (b64/encode (byte-deflate byte-str)))))
 
+(defn base64->inflate->str
+  [string]
+  (let [byte-str (str->bytes string)]
+    (bytes->str (b64/decode byte-str))))
+
 (defn uri-query-str
   [clean-hash]
   (form-encode clean-hash))
@@ -143,3 +148,34 @@
     (fn [i]
       (ctime/after? (second i) (time-since timespan))))
 
+(defn load-key-store [keystore-filename keystore-password]
+  (with-open [is (clojure.java.io/input-stream keystore-filename)]
+    (doto (java.security.KeyStore/getInstance "JKS")
+      (.load is (.toCharArray keystore-password)))))
+
+(defn get-certificate-b64 [keystore-filename keystore-password cert-alias]
+  (let [ks (load-key-store keystore-filename keystore-password)]
+    (-> ks (.getCertificate cert-alias) (.getEncoded) b64/encode (String. "UTF-8"))))
+
+
+
+;; https://www.purdue.edu/apps/account/docs/Shibboleth/Shibboleth_information.jsp
+;;  Or
+;; https://wiki.library.ucsf.edu/display/IAM/EDS+Attributes
+(def saml2-attr->name
+  (let [names {"urn:oid:0.9.2342.19200300.100.1.1" "uid"
+               "urn:oid:0.9.2342.19200300.100.1.3" "mail"
+               "urn:oid:2.16.840.1.113730.3.1.241" "displayName"
+               "urn:oid:2.5.4.3" "cn"
+               "urn:oid:2.5.4.4" "sn"
+               "urn:oid:2.5.4.42" "givenName"
+               "urn:oid:2.5.6.8" "organizationalRole"
+               "urn:oid:2.16.840.1.113730.3.1.3" "employeeNumber"
+               "urn:oid:2.16.840.1.113730.3.1.4" "employeeType"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.2" "eduPersonNickname"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.6" "eduPersonPrincipalName"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.9" "eduPersonScopedAffiliation"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.10" "eduPersonTargetedID"
+               "urn:oid:1.3.6.1.4.1.5923.1.6.1.1" "eduCourseOffering"}]
+    (fn [attr-oid]
+      (get names attr-oid attr-oid) )))
