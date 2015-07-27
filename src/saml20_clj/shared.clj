@@ -158,7 +158,6 @@
     (-> ks (.getCertificate cert-alias) (.getEncoded) b64/encode (String. "UTF-8"))))
 
 
-
 ;; https://www.purdue.edu/apps/account/docs/Shibboleth/Shibboleth_information.jsp
 ;;  Or
 ;; https://wiki.library.ucsf.edu/display/IAM/EDS+Attributes
@@ -168,10 +167,13 @@
                "urn:oid:2.16.840.1.113730.3.1.241" "displayName"
                "urn:oid:2.5.4.3" "cn"
                "urn:oid:2.5.4.4" "sn"
+               "urn:oid:2.5.4.12" "title"
+               "urn:oid:2.5.4.20" "phone"
                "urn:oid:2.5.4.42" "givenName"
                "urn:oid:2.5.6.8" "organizationalRole"
                "urn:oid:2.16.840.1.113730.3.1.3" "employeeNumber"
                "urn:oid:2.16.840.1.113730.3.1.4" "employeeType"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.1" "eduPersonAffiliation"
                "urn:oid:1.3.6.1.4.1.5923.1.1.1.2" "eduPersonNickname"
                "urn:oid:1.3.6.1.4.1.5923.1.1.1.6" "eduPersonPrincipalName"
                "urn:oid:1.3.6.1.4.1.5923.1.1.1.9" "eduPersonScopedAffiliation"
