@@ -42,7 +42,7 @@
                 successful login in the IdP. 
 
   - POST /saml : this is the endpoint for accepting the responses from the IdP. It then redirects
-                 the browser to the 'continue-url' if it exists in the session, or the '/' root
+                 the browser to the 'continue-url' that is found in the RelayState paramete, or the '/' root
                  of the app.
   "
  [{:keys [app-name base-uri idp-uri idp-cert keystore-file keystore-password key-alias]}]
@@ -69,27 +69,23 @@
                                :headers {"Content-type" "text/xml"}
                                :body (saml-sp/metadata app-name acs-uri cert) } )
       (cc/GET "/saml" [& params]
-           (let [url (get params :continue "/")
-                 redirect (saml-sp/get-idp-redirect idp-uri
-                                                    (saml-req-factory!)
-                                                    acs-uri)]
-             (assoc redirect
-                    :session {:continue-url url})))
+              (let [continue-url (get params :continue "/")]
+                (saml-sp/get-idp-redirect idp-uri
+                                          (saml-req-factory!)
+                                          continue-url)))
       (cc/POST "/saml" {params :params session :session}
             (let [xml-response (saml-shared/base64->inflate->str (:SAMLResponse params))
+                  continue-url (:RelayState params)
                   saml-resp (saml-sp/xml-string->saml-resp xml-response)
                   valid? (if idp-cert
                            (saml-sp/validate-saml-response-signature saml-resp idp-cert)
                            true)
-                  saml-info (when valid? (saml-sp/saml-resp->assertions saml-resp decrypter) )
-                  continue-url (:continue-url session) ]
+                  saml-info (when valid? (saml-sp/saml-resp->assertions saml-resp decrypter) )]
               ;;(prn saml-info)
               (if valid?
                 {:status  303 ;; See other
                  :headers {"Location" continue-url}
-                 :session (-> session
-                              (dissoc :continue-url)
-                              (assoc :saml saml-info))
+                 :session (assoc session :saml saml-info)
                  :body ""}
                 {:status 500
                  :body "The SAML response from IdP does not validate!"}))))))
