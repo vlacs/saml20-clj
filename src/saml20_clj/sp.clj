@@ -93,7 +93,8 @@
 (defn generate-mutables
   []
   {:saml-id-timeouts (ref {})
-   :saml-last-id (atom 0)})
+   :saml-last-id (atom 0)
+   :secret-key-spec (shared/new-secret-key-spec)})
 
 (defn create-request-factory
   "Creates new requests for a particular service, format, and acs-url."
@@ -110,13 +111,13 @@
            issue-instant (shared/make-issue-instant current-time)]
        (bump-saml-id-timeout-fn! new-saml-id current-time)
        (doto (xml-signer (create-request issue-instant 
-                                     saml-format
-                                     saml-service-name
-                                     new-saml-id
-                                     acs-url
-                                     idp-uri)
-                         new-saml-id)
-        println)))))
+                                         saml-format
+                                         saml-service-name
+                                         new-saml-id
+                                         acs-url
+                                         idp-uri))
+         ;;println
+         )))))
 
 (defn get-idp-redirect
   "Return Ring response for HTTP 302 redirect."
@@ -189,18 +190,13 @@
     ;; https://svn.apache.org/repos/asf/santuario/xml-security-java/trunk/samples/org/apache/xml/security/samples/signature/CreateSignature.java
     ;; http://stackoverflow.com/questions/2052251/is-there-an-easier-way-to-sign-an-xml-document-in-java
     ;; Also useful: http://www.di-mgt.com.au/xmldsig2.html
-    (fn sign-xml-doc [xml-string saml-id]
+    (fn sign-xml-doc [xml-string]
       (let [xmldoc (saml-xml/str->xmldoc xml-string)
             transforms (doto (new Transforms xmldoc)
                          (.addTransform Transforms/TRANSFORM_ENVELOPED_SIGNATURE)
                          (.addTransform Transforms/TRANSFORM_C14N_EXCL_OMIT_COMMENTS))
             sig (new org.apache.xml.security.signature.XMLSignature xmldoc nil sig-algo)
             canonicalizer (Canonicalizer/getInstance Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)]
-        ;; http://stackoverflow.com/questions/17331187/xml-dig-sig-error-after-upgrade-to-java7u25
-        ;; We assume that this an AuthnRequest with an ID attribute at
-        ;; root Element and make this attribute "identified as ID XML speaking"
-        ;;;(let [root-elem (.getDocumentElement xmldoc)] (.setIdAttributeNode root-elem (.getAttributeNode root-elem "ID") true) )
-          
         (.. xmldoc
             (getDocumentElement)
             (appendChild (.getElement sig)))

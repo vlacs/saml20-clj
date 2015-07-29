@@ -66,6 +66,7 @@
   [java-cert-obj]
   (.getPublicKey java-cert-obj)) 
 
+
 (defn str->inputstream
   "Unravels a string into an input stream so we can work with Java constructs."
   [unravel]
@@ -120,6 +121,39 @@
   [string]
   (let [byte-str (str->bytes string)]
     (bytes->str (b64/decode byte-str))))
+
+(defn random-bytes 
+  ([size]
+   (let [ba (byte-array size)
+         r (new java.util.Random)]
+     (.nextBytes r ba)
+     ba) )
+  ([]
+   (random-bytes 20)))
+
+(def bytes->hex
+  (let [digits (into {} (map-indexed vector "0123456789ABCDEF") )]
+    (fn [^bytes bytes-str]
+      (let [ret (char-array (* 2 (alength bytes-str)))]
+        (loop  [idx 0]
+          (if (< idx  (alength bytes-str))
+            (let [pos (* 2 idx)
+                  b (aget bytes-str idx)
+                  d1 (unsigned-bit-shift-right (bit-and 0xF0 b) 4)
+                  d2 (bit-and 0x0F b)]
+              (aset-char ret pos (digits d1))
+              (aset-char ret (unchecked-inc pos) (digits d2))
+              (recur (unchecked-inc idx)))
+            (String. ret)))))))
+
+(defn new-secret-key-spec []
+  (new javax.crypto.spec.SecretKeySpec (random-bytes) "HmacSHA1"))
+
+(defn hmac-str [^javax.crypto.spec.SecretKeySpec key-spec ^String string]
+  (let [mac (doto (javax.crypto.Mac/getInstance "HmacSHA1")
+              (.init key-spec))
+        hs (.doFinal mac (.getBytes string "UTF-8"))]
+    (bytes->hex hs)))
 
 (defn uri-query-str
   [clean-hash]
