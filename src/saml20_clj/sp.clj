@@ -195,7 +195,8 @@
             transforms (doto (new Transforms xmldoc)
                          (.addTransform Transforms/TRANSFORM_ENVELOPED_SIGNATURE)
                          (.addTransform Transforms/TRANSFORM_C14N_EXCL_OMIT_COMMENTS))
-            sig (new org.apache.xml.security.signature.XMLSignature xmldoc nil sig-algo)
+            sig (new org.apache.xml.security.signature.XMLSignature xmldoc nil sig-algo 
+                     Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
             canonicalizer (Canonicalizer/getInstance Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)]
         (.. xmldoc
             (getDocumentElement)
