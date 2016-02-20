@@ -4,8 +4,11 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :source-paths ["src"]
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring "1.2.1"]
+                 [org.apache.santuario/xmlsec "2.0.4"]
+                 [compojure  "1.3.4"]
+                 [org.opensaml/opensaml  "2.6.4"]
                  [org.clojure/data.xml "0.0.7"]
                  [org.clojure/data.codec "0.1.0"]
                  [clj-time "0.6.0"]

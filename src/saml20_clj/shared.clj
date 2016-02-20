@@ -11,7 +11,7 @@
             [clojure.xml])
   (:import [java.io ByteArrayInputStream]))
 
-(def instant-format (ctimeformat/formatters :date-hour-minute-second))
+(def instant-format (ctimeformat/formatters :date-time-no-ms))
 (def charset-format (java.nio.charset.Charset/forName "UTF-8"))
 
 (def status-code-success "urn:oasis:names:tc:SAML:2.0:status:Success")
@@ -66,6 +66,7 @@
   [java-cert-obj]
   (.getPublicKey java-cert-obj)) 
 
+
 (defn str->inputstream
   "Unravels a string into an input stream so we can work with Java constructs."
   [unravel]
@@ -116,6 +117,44 @@
   (let [byte-str (str->bytes deflatable-str)]
     (bytes->str (b64/encode (byte-deflate byte-str)))))
 
+(defn base64->inflate->str
+  [string]
+  (let [byte-str (str->bytes string)]
+    (bytes->str (b64/decode byte-str))))
+
+(defn random-bytes 
+  ([size]
+   (let [ba (byte-array size)
+         r (new java.util.Random)]
+     (.nextBytes r ba)
+     ba) )
+  ([]
+   (random-bytes 20)))
+
+(def bytes->hex
+  (let [digits (into {} (map-indexed vector "0123456789ABCDEF") )]
+    (fn [^bytes bytes-str]
+      (let [ret (char-array (* 2 (alength bytes-str)))]
+        (loop  [idx 0]
+          (if (< idx  (alength bytes-str))
+            (let [pos (* 2 idx)
+                  b (aget bytes-str idx)
+                  d1 (unsigned-bit-shift-right (bit-and 0xF0 b) 4)
+                  d2 (bit-and 0x0F b)]
+              (aset-char ret pos (digits d1))
+              (aset-char ret (unchecked-inc pos) (digits d2))
+              (recur (unchecked-inc idx)))
+            (String. ret)))))))
+
+(defn new-secret-key-spec []
+  (new javax.crypto.spec.SecretKeySpec (random-bytes) "HmacSHA1"))
+
+(defn hmac-str [^javax.crypto.spec.SecretKeySpec key-spec ^String string]
+  (let [mac (doto (javax.crypto.Mac/getInstance "HmacSHA1")
+              (.init key-spec))
+        hs (.doFinal mac (.getBytes string "UTF-8"))]
+    (bytes->hex hs)))
+
 (defn uri-query-str
   [clean-hash]
   (form-encode clean-hash))
@@ -143,3 +182,36 @@
     (fn [i]
       (ctime/after? (second i) (time-since timespan))))
 
+(defn load-key-store [keystore-filename keystore-password]
+  (with-open [is (clojure.java.io/input-stream keystore-filename)]
+    (doto (java.security.KeyStore/getInstance "JKS")
+      (.load is (.toCharArray keystore-password)))))
+
+(defn get-certificate-b64 [keystore-filename keystore-password cert-alias]
+  (let [ks (load-key-store keystore-filename keystore-password)]
+    (-> ks (.getCertificate cert-alias) (.getEncoded) b64/encode (String. "UTF-8"))))
+
+
+;; https://www.purdue.edu/apps/account/docs/Shibboleth/Shibboleth_information.jsp
+;;  Or
+;; https://wiki.library.ucsf.edu/display/IAM/EDS+Attributes
+(def saml2-attr->name
+  (let [names {"urn:oid:0.9.2342.19200300.100.1.1" "uid"
+               "urn:oid:0.9.2342.19200300.100.1.3" "mail"
+               "urn:oid:2.16.840.1.113730.3.1.241" "displayName"
+               "urn:oid:2.5.4.3" "cn"
+               "urn:oid:2.5.4.4" "sn"
+               "urn:oid:2.5.4.12" "title"
+               "urn:oid:2.5.4.20" "phone"
+               "urn:oid:2.5.4.42" "givenName"
+               "urn:oid:2.5.6.8" "organizationalRole"
+               "urn:oid:2.16.840.1.113730.3.1.3" "employeeNumber"
+               "urn:oid:2.16.840.1.113730.3.1.4" "employeeType"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.1" "eduPersonAffiliation"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.2" "eduPersonNickname"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.6" "eduPersonPrincipalName"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.9" "eduPersonScopedAffiliation"
+               "urn:oid:1.3.6.1.4.1.5923.1.1.1.10" "eduPersonTargetedID"
+               "urn:oid:1.3.6.1.4.1.5923.1.6.1.1" "eduCourseOffering"}]
+    (fn [attr-oid]
+      (get names attr-oid attr-oid) )))

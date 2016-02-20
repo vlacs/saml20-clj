@@ -40,7 +40,7 @@
                                    (:acs-url state)))
                  (POST "/saml" [& params]
                        (let [saml-resp (:SAMLResponse params)
-                             validity (saml-xml/validate-xml-doc
+                             validity (saml-xml/validate-xml-signature
                                         saml-resp
                                         (get-in state [:saml :certificate-x509]))
                              request-map (saml-sp/parse-saml-response saml-resp)]

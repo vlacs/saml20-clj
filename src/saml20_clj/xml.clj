@@ -8,7 +8,8 @@
            [java.io ByteArrayInputStream]
            [javax.xml.parsers DocumentBuilderFactory]
            [org.w3c.dom Document]
-           [org.w3c.dom NodeList]))
+           [org.w3c.dom NodeList]
+           [org.apache.xml.security.c14n Canonicalizer]))
 
 (defn make-xml-string
   "Creates an XML string using hiccup."
@@ -42,21 +43,27 @@
   (let [nodes (.getElementsByTagNameNS xmldoc XMLSignature/XMLNS "Signature")]
     ;;; Zero nodes means that we can't find a XML signature.
     (if (= (.getLength nodes) 0)
-      (throw (Throwable. "This XML document has no signature to verify.")))
-    (.item nodes 0))) ;;; Take the first node.
+      ;;(throw (Throwable. "This XML document has no signature to verify."))
+      nil
+      (.item nodes 0)))) ;;; Take the first node.
 
 (defn get-dom-context
   [kv-selector signature-node]
   (DOMValidateContext. kv-selector signature-node))
 
-(defn validate-xml-doc
-  "Does everything to determine if this XML document's signature is valid."
+(defn validate-xml-signature
+  "Checks if this XML document's signature is valid using the supplied certificate"
   [xml-string cert-string]
   (let [sig-factory (new-xml-sig-factory)
         public-key (saml-shared/jcert->public-key (saml-shared/certificate-x509 cert-string))
         xmldoc (str->xmldoc xml-string)
         xml-sig-node (xmlsig-from-xmldoc xmldoc)
-        context (get-dom-context (singleton-key-selector public-key) xml-sig-node)
-        signature (.unmarshalXMLSignature sig-factory context)] 
-    (.validate signature context)))
+        validate-signature #(let [context (get-dom-context (singleton-key-selector public-key) xml-sig-node)
+                                  signature (.unmarshalXMLSignature sig-factory context)]
+                              (.validate signature context))] 
+    (if xml-sig-node (validate-signature)
+      true)))
 
+(defn dom-node->str [dom-node]
+  (let [canonicalizer (Canonicalizer/getInstance Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)]
+    (String. (.canonicalizeSubtree canonicalizer dom-node))))
