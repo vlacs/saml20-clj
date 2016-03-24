@@ -108,16 +108,17 @@
    (fn request-factory []
      (let [current-time (ctime/now)
            new-saml-id (next-saml-id-fn!)
-           issue-instant (shared/make-issue-instant current-time)]
+           issue-instant (shared/make-issue-instant current-time)
+           new-request (create-request issue-instant 
+                                       saml-format
+                                       saml-service-name
+                                       new-saml-id
+                                       acs-url
+                                       idp-uri)]
        (bump-saml-id-timeout-fn! new-saml-id current-time)
-       (doto (xml-signer (create-request issue-instant 
-                                         saml-format
-                                         saml-service-name
-                                         new-saml-id
-                                         acs-url
-                                         idp-uri))
-         ;;println
-         )))))
+       (if xml-signer
+         (xml-signer new-request)
+         new-request)))))
 
 (defn get-idp-redirect
   "Return Ring response for HTTP 302 redirect."
@@ -179,51 +180,53 @@
 
 (defn make-saml-signer
   [keystore-filename keystore-password key-alias]
-  (Init/init)
-  (ElementProxy/setDefaultPrefix Constants/SignatureSpecNS "")
-  (let [ks (shared/load-key-store keystore-filename keystore-password)
-        private-key (.getKey ks key-alias (.toCharArray keystore-password))
-        cert (.getCertificate ks key-alias)
-        sig-algo (case (.getAlgorithm private-key)
-                   "DSA" org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_DSA
-                   org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_RSA)]
-    ;; https://svn.apache.org/repos/asf/santuario/xml-security-java/trunk/samples/org/apache/xml/security/samples/signature/CreateSignature.java
-    ;; http://stackoverflow.com/questions/2052251/is-there-an-easier-way-to-sign-an-xml-document-in-java
-    ;; Also useful: http://www.di-mgt.com.au/xmldsig2.html
-    (fn sign-xml-doc [xml-string]
-      (let [xmldoc (saml-xml/str->xmldoc xml-string)
-            transforms (doto (new Transforms xmldoc)
-                         (.addTransform Transforms/TRANSFORM_ENVELOPED_SIGNATURE)
-                         (.addTransform Transforms/TRANSFORM_C14N_EXCL_OMIT_COMMENTS))
-            sig (new org.apache.xml.security.signature.XMLSignature xmldoc nil sig-algo 
-                     Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
-            canonicalizer (Canonicalizer/getInstance Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)]
-        (.. xmldoc
-            (getDocumentElement)
-            (appendChild (.getElement sig)))
-        (doto sig
-          (.addDocument "" transforms Constants/ALGO_ID_DIGEST_SHA1)
-          (.addKeyInfo cert)
-          (.addKeyInfo (.getPublicKey cert))
-          (.sign private-key))
-        (String. (.canonicalizeSubtree canonicalizer xmldoc) "UTF-8")))))
+  (when keystore-filename
+    (Init/init)
+    (ElementProxy/setDefaultPrefix Constants/SignatureSpecNS "")
+    (let [ks (shared/load-key-store keystore-filename keystore-password)
+          private-key (.getKey ks key-alias (.toCharArray keystore-password))
+          cert (.getCertificate ks key-alias)
+          sig-algo (case (.getAlgorithm private-key)
+                     "DSA" org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_DSA
+                     org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_RSA)]
+      ;; https://svn.apache.org/repos/asf/santuario/xml-security-java/trunk/samples/org/apache/xml/security/samples/signature/CreateSignature.java
+      ;; http://stackoverflow.com/questions/2052251/is-there-an-easier-way-to-sign-an-xml-document-in-java
+      ;; Also useful: http://www.di-mgt.com.au/xmldsig2.html
+      (fn sign-xml-doc [xml-string]
+        (let [xmldoc (saml-xml/str->xmldoc xml-string)
+              transforms (doto (new Transforms xmldoc)
+                           (.addTransform Transforms/TRANSFORM_ENVELOPED_SIGNATURE)
+                           (.addTransform Transforms/TRANSFORM_C14N_EXCL_OMIT_COMMENTS))
+              sig (new org.apache.xml.security.signature.XMLSignature xmldoc nil sig-algo 
+                       Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
+              canonicalizer (Canonicalizer/getInstance Canonicalizer/ALGO_ID_C14N_EXCL_OMIT_COMMENTS)]
+          (.. xmldoc
+              (getDocumentElement)
+              (appendChild (.getElement sig)))
+          (doto sig
+            (.addDocument "" transforms Constants/ALGO_ID_DIGEST_SHA1)
+            (.addKeyInfo cert)
+            (.addKeyInfo (.getPublicKey cert))
+            (.sign private-key))
+          (String. (.canonicalizeSubtree canonicalizer xmldoc) "UTF-8"))))))
 
 (defn make-saml-decrypter [keystore-filename keystore-password key-alias]
-  (org.opensaml.DefaultBootstrap/bootstrap)
-  (let [ks (shared/load-key-store keystore-filename keystore-password)
-        private-key (.getKey ks key-alias (.toCharArray keystore-password))
-        decryption-cred (doto (new org.opensaml.xml.security.x509.BasicX509Credential) 
-                          (.setPrivateKey private-key))
-        decrypter (new org.opensaml.saml2.encryption.Decrypter
-                       nil
-                       (new org.opensaml.xml.security.keyinfo.StaticKeyInfoCredentialResolver decryption-cred)
-                       (new org.opensaml.xml.encryption.InlineEncryptedKeyResolver))]
-    decrypter))
+  (when keystore-filename
+    (org.opensaml.DefaultBootstrap/bootstrap)
+    (let [ks (shared/load-key-store keystore-filename keystore-password)
+          private-key (.getKey ks key-alias (.toCharArray keystore-password))
+          decryption-cred (doto (new org.opensaml.xml.security.x509.BasicX509Credential) 
+                            (.setPrivateKey private-key))
+          decrypter (new org.opensaml.saml2.encryption.Decrypter
+                         nil
+                         (new org.opensaml.xml.security.keyinfo.StaticKeyInfoCredentialResolver decryption-cred)
+                         (new org.opensaml.xml.encryption.InlineEncryptedKeyResolver))]
+      decrypter)))
 
 ;; http://kevnls.blogspot.gr/2009/07/processing-saml-in-java-using-opensaml.html
 ;; http://stackoverflow.com/questions/9422545/decrypting-encrypted-assertion-using-saml-2-0-in-java-using-opensaml
 (defn parse-saml-assertion
- "Returns the attributes and the 'audiences' for the given SAML assertion"
+  "Returns the attributes and the 'audiences' for the given SAML assertion"
   [assertion]
   (let [statements (.getAttributeStatements assertion)
         attributes (mapcat #(.getAttributes %) statements)
@@ -257,10 +260,10 @@
     ))
 
 (defn parse-saml-resp-status
- "Parses and returns information about the status (i.e. successful or not), the version, addressing info etc. of the SAML response
+  "Parses and returns information about the status (i.e. successful or not), the version, addressing info etc. of the SAML response
   Check the javadoc of OpenSAML at:
   https://build.shibboleth.net/nexus/service/local/repositories/releases/archive/org/opensaml/opensaml/2.5.3/opensaml-2.5.3-javadoc.jar/!/index.html"
- [saml-resp]
+  [saml-resp]
   (let [status (.. saml-resp getStatus getStatusCode getValue)]
     {:inResponseTo (.getInResponseTo saml-resp)
      :status status
@@ -270,8 +273,8 @@
      :destination (.getDestination saml-resp)}))
 
 (defn xml-string->saml-resp
- "Parses a SAML response (XML string) from IdP and returns the corresponding (Open)SAML Response object"
- [xml-string]
+  "Parses a SAML response (XML string) from IdP and returns the corresponding (Open)SAML Response object"
+  [xml-string]
   (let [xmldoc (.getDocumentElement (saml-xml/str->xmldoc xml-string) )
         unmarshallerFactory  (org.opensaml.Configuration/getUnmarshallerFactory)
         unmarshaller (.getUnmarshaller unmarshallerFactory xmldoc)
@@ -279,11 +282,12 @@
     saml-resp))
 
 (defn saml-resp->assertions
- "Returns the assertions (encrypted or not) of a SAML Response object"
- [saml-resp decrypter]
- (let [assertions (concat (.getAssertions saml-resp)
-                          (map #(.decrypt decrypter %)
-                               (.getEncryptedAssertions saml-resp)))
+  "Returns the assertions (encrypted or not) of a SAML Response object"
+  [saml-resp decrypter]
+  (let [assertions (concat (.getAssertions saml-resp)
+                           (when decrypter
+                            (map #(.decrypt decrypter %)
+                                (.getEncryptedAssertions saml-resp))))
         props (map parse-saml-assertion assertions)]
     (assoc (parse-saml-resp-status saml-resp)
            :assertions props )))

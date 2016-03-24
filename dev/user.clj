@@ -25,17 +25,16 @@
 
 (defn new-saml-instance
   [conf-path]
-  (web/wrap-app-state (let [conf-hash (edn/read-string (slurp conf-path))
-                            acs-url (let [acs (get-in conf-hash [:saml :acs])]
-                                      (str (:protocol acs)
-                                           "://"
-                                           (:name acs)
-                                           ":"
-                                           (:port acs)
-                                           (:path acs)))]
-                        (assoc conf-hash :acs-url acs-url))))
+  (web/wrap-app-state (edn/read-string (slurp conf-path))))
 
 (defn reset-state!
   [conf-path]
   (reset! app-state (new-saml-instance conf-path)))
 
+(comment
+  
+  (reset-state! "config.edn")
+  (start-ring!)
+  (stop-ring!)
+
+  )

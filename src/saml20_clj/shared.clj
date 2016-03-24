@@ -183,12 +183,14 @@
       (ctime/after? (second i) (time-since timespan))))
 
 (defn load-key-store [keystore-filename keystore-password]
-  (with-open [is (clojure.java.io/input-stream keystore-filename)]
-    (doto (java.security.KeyStore/getInstance "JKS")
-      (.load is (.toCharArray keystore-password)))))
+  (when (and (not (nil? keystore-filename))
+             (.exists (io/as-file keystore-filename)))
+    (with-open [is (clojure.java.io/input-stream keystore-filename)]
+      (doto (java.security.KeyStore/getInstance "JKS")
+        (.load is (.toCharArray keystore-password))))))
 
 (defn get-certificate-b64 [keystore-filename keystore-password cert-alias]
-  (let [ks (load-key-store keystore-filename keystore-password)]
+  (when-let [ks (load-key-store keystore-filename keystore-password)]
     (-> ks (.getCertificate cert-alias) (.getEncoded) b64/encode (String. "UTF-8"))))
 
 
