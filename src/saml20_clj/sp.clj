@@ -105,6 +105,9 @@
      (:xml-signer mutables)
      idp-uri saml-format saml-service-name acs-url))
   ([next-saml-id-fn! bump-saml-id-timeout-fn! xml-signer idp-uri saml-format saml-service-name acs-url]
+   ;;; Bootstrap opensaml when we create a request factory.
+   ;;; TODO: Figure out if this can be called more than once.
+   (org.opensaml.DefaultBootstrap/bootstrap)
    (fn request-factory []
      (let [current-time (ctime/now)
            new-saml-id (next-saml-id-fn!)
@@ -212,7 +215,6 @@
 
 (defn make-saml-decrypter [keystore-filename keystore-password key-alias]
   (when keystore-filename
-    (org.opensaml.DefaultBootstrap/bootstrap)
     (let [ks (shared/load-key-store keystore-filename keystore-password)
           private-key (.getKey ks key-alias (.toCharArray keystore-password))
           decryption-cred (doto (new org.opensaml.xml.security.x509.BasicX509Credential) 
@@ -229,6 +231,10 @@
   "Returns the attributes and the 'audiences' for the given SAML assertion"
   [assertion]
   (let [statements (.getAttributeStatements assertion)
+        subject (.getSubject assertion)
+        subject-confirmation-data (.getSubjectConfirmationData
+                                    (first (.getSubjectConfirmations subject)))
+        name-id (.getNameID subject)
         attributes (mapcat #(.getAttributes %) statements)
         attrs (apply merge
                      (map (fn [a] {(shared/saml2-attr->name (.getName a)) ;; Or (.getFriendlyName a) ??
@@ -239,7 +245,15 @@
         audiences (mapcat #(let [audiences (.getAudiences %)]
                              (map (fn [a] (.getAudienceURI a)) audiences))
                           (.getAudienceRestrictions conditions))]
-    (assoc {} :attrs attrs :audiences audiences)))
+    {:attrs attrs :audiences audiences
+     :name-id
+     {:value (.getValue name-id)
+      :format (.getFormat name-id)}
+     :confirmation
+     {:in-response-to (.getInResponseTo subject-confirmation-data)
+      :not-before (.getNotBefore subject-confirmation-data)
+      :not-on-or-after (.getNotOnOrAfter subject-confirmation-data)
+      :recipient (.getRecipient subject-confirmation-data)}}))
 
 (defn validate-saml-response-signature
   "Checks (if exists) the signature of SAML Response given the IdP certificate"
@@ -275,8 +289,8 @@
 (defn xml-string->saml-resp
   "Parses a SAML response (XML string) from IdP and returns the corresponding (Open)SAML Response object"
   [xml-string]
-  (let [xmldoc (.getDocumentElement (saml-xml/str->xmldoc xml-string) )
-        unmarshallerFactory  (org.opensaml.Configuration/getUnmarshallerFactory)
+  (let [xmldoc (.getDocumentElement (saml-xml/str->xmldoc xml-string))
+        unmarshallerFactory (org.opensaml.Configuration/getUnmarshallerFactory)
         unmarshaller (.getUnmarshaller unmarshallerFactory xmldoc)
         saml-resp (.unmarshall unmarshaller xmldoc)]
     saml-resp))

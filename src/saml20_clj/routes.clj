@@ -4,7 +4,8 @@
   (:require [compojure.core :as cc]
             [saml20-clj.sp :as saml-sp]
             [saml20-clj.xml :as saml-xml]
-            [saml20-clj.shared :as saml-shared])
+            [saml20-clj.shared :as saml-shared]
+            [helmsman uri navigation])
   (:gen-class))
 
 (def saml-format "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect")
@@ -34,7 +35,6 @@
 
 (defn new-request-handler
   [req]
-  (prn (get-in req [:saml20 :mutables]))
   (let [continue-url (get-in req [:params :continue] "/")
         relay-state (create-hmac-relay-state
                       (get-in req [:saml20 :mutables :secret-key-spec])
@@ -60,10 +60,9 @@
         saml-info (when valid? (saml-sp/saml-resp->assertions
                                  saml-resp (:decrypter saml20)))]
     (if valid?
-      {:status 303
-       :headers {"Location" continue-url}
-       :session (assoc session :saml saml-info)
-       :body ""}
+      {:status 200
+       :session (assoc session :saml20 saml-info)
+       :body (prn-str saml-info)}
       {:status 500
        :body "The SAML response from the IdP did not validate!"})))
 
@@ -145,37 +144,46 @@
 
 (defn saml-wrapper
   [handler
-   {:keys [app-name base-uri idp-uri idp-cert keystore-file
+   {:keys [base-uri app-name idp-uri idp-cert keystore-file
            keystore-password key-alias] :as saml20-config}
    mutables]
-  (let [new-mutables (saml-sp/make-saml-signer
-                       keystore-file keystore-password key-alias)]
+  (let [new-mutables (assoc
+                       mutables
+                       :xml-signer
+                       (saml-sp/make-saml-signer
+                         keystore-file keystore-password key-alias))]
   (fn saml-wrapper-fn
     [request]
-    (handler
-      (assoc
-        request :saml20
+    (let [acs-uri (str base-uri
+                       (helmsman.uri/assemble
+                         (:path
+                           (helmsman.navigation/get-route-by-id
+                             request :saml20-clj/endpoint))))]
+      (handler
         (assoc
-          saml20-config
-          :decrypter 
-          (saml-sp/make-saml-decrypter
-            keystore-file keystore-password key-alias)
-          :cert 
-          (saml-shared/get-certificate-b64
-            keystore-file keystore-password key-alias)
-          :mutables new-mutables
-          :acs-uri (str base-uri "/saml")
-          :saml20-req-factory (saml-sp/create-request-factory
-                                new-mutables idp-uri saml-format
-                                app-name (str base-uri "/saml"))
-          :prune-fn! (partial saml-sp/prune-timed-out-ids!
-                              (:saml-id-timeouts mutables))))))))
+          request :saml20
+          (assoc
+            saml20-config
+            :decrypter 
+            (saml-sp/make-saml-decrypter
+              keystore-file keystore-password key-alias)
+            :cert 
+            (saml-shared/get-certificate-b64
+              keystore-file keystore-password key-alias)
+            :mutables new-mutables
+            :acs-uri acs-uri
+            :saml20-req-factory! (saml-sp/create-request-factory
+                                   new-mutables idp-uri saml-format
+                                   app-name acs-uri)
+            :prune-fn! (partial saml-sp/prune-timed-out-ids!
+                                (:saml-id-timeouts mutables)))))))))
 
 (defn helmsman-routes
   [saml20-config]
-  [[:context "saml"
-    [saml-wrapper saml20-config (saml-sp/generate-mutables)]
-    [:get "meta" meta-response]
-    [:get "" new-request-handler]
-    [:post "" process-response-handler]]])
+  [[saml-wrapper saml20-config (saml-sp/generate-mutables)]
+   [:get "saml/meta" meta-response]
+   ^{:id :saml20-clj/endpoint}
+   [:get "saml" new-request-handler]
+   [:post "saml" process-response-handler]])
+
 
