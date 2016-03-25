@@ -3,7 +3,7 @@
             [clojure.xml :refer [parse]]
             [ring.util.response :refer [redirect]]
             [clj-time.core :as ctime]
-            [clj-time.coerse :refer [to-timestamp]]
+            [clj-time.coerce :refer [to-timestamp]]
             [hiccup.core :as hiccup]
             [saml20-clj.shared :as shared]
             [saml20-clj.xml :as saml-xml]
