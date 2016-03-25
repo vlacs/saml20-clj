@@ -1,4 +1,4 @@
-(defproject saml20-clj "0.1.5"
+(defproject saml20-clj "0.1.6"
   :description "Basic SAML 2.0 library for SSO."
   :url "https://github.com/vlacs/saml20-clj"
   :license {:name "Eclipse Public License"
