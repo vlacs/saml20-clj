@@ -60,9 +60,10 @@
         saml-info (when valid? (saml-sp/saml-resp->assertions
                                  saml-resp (:decrypter saml20)))]
     (if valid?
-      {:status 200
+      {:status 303
+       :headers {"Location" continue-url}
        :session (assoc session :saml20 saml-info)
-       :body (prn-str saml-info)}
+       :body ""}
       {:status 500
        :body "The SAML response from the IdP did not validate!"})))
 

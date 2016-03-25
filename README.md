@@ -4,7 +4,7 @@ This is a SAML 2.0 clojure library for SSO.
 
 ## Installation
 
-Add ```[saml20-clj "0.1.4"]``` to your project dependencies.
+Add ```[saml20-clj "0.1.5"]``` to your project dependencies.
 
 ## Usage
 

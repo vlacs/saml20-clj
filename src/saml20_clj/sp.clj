@@ -3,6 +3,7 @@
             [clojure.xml :refer [parse]]
             [ring.util.response :refer [redirect]]
             [clj-time.core :as ctime]
+            [clj-time.coerse :refer [to-timestamp]]
             [hiccup.core :as hiccup]
             [saml20-clj.shared :as shared]
             [saml20-clj.xml :as saml-xml]
@@ -251,8 +252,8 @@
       :format (.getFormat name-id)}
      :confirmation
      {:in-response-to (.getInResponseTo subject-confirmation-data)
-      :not-before (.getNotBefore subject-confirmation-data)
-      :not-on-or-after (.getNotOnOrAfter subject-confirmation-data)
+      :not-before (to-timestamp (.getNotBefore subject-confirmation-data))
+      :not-on-or-after (to-timestamp (.getNotOnOrAfter subject-confirmation-data))
       :recipient (.getRecipient subject-confirmation-data)}}))
 
 (defn validate-saml-response-signature
@@ -283,7 +284,7 @@
      :status status
      :success? (= status org.opensaml.saml2.core.StatusCode/SUCCESS_URI) 
      :version (.. saml-resp getVersion toString)
-     :issueInstant (.getIssueInstant saml-resp)
+     :issueInstant (to-timestamp (.getIssueInstant saml-resp))
      :destination (.getDestination saml-resp)}))
 
 (defn xml-string->saml-resp
