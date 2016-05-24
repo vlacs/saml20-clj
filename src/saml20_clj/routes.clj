@@ -123,7 +123,8 @@
                                :headers {"Content-type" "text/xml"}
                                :body (saml-sp/metadata app-name acs-uri cert) } )
       (cc/GET "/saml" [:as req]
-              (new-request-handler req))
+              ;;; Update this to actually do something. :|
+              )
       (cc/POST "/saml" {params :params session :session}
                (let [xml-response (saml-shared/base64->inflate->str (:SAMLResponse params))
                      relay-state (:RelayState params)
