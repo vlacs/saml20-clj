@@ -1,10 +1,10 @@
-(defproject saml20-clj "0.1.6"
+(defproject k2n/saml20-clj "0.1.7-SNAPSHOT"
   :description "Basic SAML 2.0 library for SSO."
   :url "https://github.com/vlacs/saml20-clj"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :source-paths ["src"]
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [clj-time "0.11.0"]
                  [ring "1.4.0"]
                  [org.apache.santuario/xmlsec "2.0.4"]

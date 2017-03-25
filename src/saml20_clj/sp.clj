@@ -183,7 +183,7 @@
 
 
 (defn make-saml-signer
-  [keystore-filename keystore-password key-alias]
+  [keystore-filename keystore-password key-alias & {:keys [algorithm] :or {algorithm :sha1}}]
   (when keystore-filename
     (Init/init)
     (ElementProxy/setDefaultPrefix Constants/SignatureSpecNS "")
@@ -191,8 +191,12 @@
           private-key (.getKey ks key-alias (.toCharArray keystore-password))
           cert (.getCertificate ks key-alias)
           sig-algo (case (.getAlgorithm private-key)
-                     "DSA" org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_DSA
-                     org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_RSA)]
+                     "DSA" (case algorithm
+                             :sha256 org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_DSA_SHA256
+                             org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_DSA)
+                     (case algorithm
+                       :sha256 org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_RSA_SHA256
+                       org.apache.xml.security.signature.XMLSignature/ALGO_ID_SIGNATURE_RSA))]
       ;; https://svn.apache.org/repos/asf/santuario/xml-security-java/trunk/samples/org/apache/xml/security/samples/signature/CreateSignature.java
       ;; http://stackoverflow.com/questions/2052251/is-there-an-easier-way-to-sign-an-xml-document-in-java
       ;; Also useful: http://www.di-mgt.com.au/xmldsig2.html
