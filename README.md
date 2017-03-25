@@ -10,8 +10,8 @@ Add ```[k2n/saml20-clj "0.1.7"]``` to your project dependencies.
 
 ## Usage
 
-See [quephird/saml-test](https://github.com/quephird/saml-test) for the usage. 
-This is forked from [vlacs/saml20-clj](https://github.com/vlacs/saml20-clj) and added the support for XML signing with SHA-256 instead of SHA-1, which is required by ADFS by default. 
+* See [quephird/saml-test](https://github.com/quephird/saml-test) for the usage. 
+* This repository is forked from [vlacs/saml20-clj](https://github.com/vlacs/saml20-clj) and added the support for XML signing with SHA-256 instead of SHA-1, which is required by ADFS by default. 
 
 ``` clojure
 (ns myapp.routes.saml
@@ -88,7 +88,7 @@ This is forked from [vlacs/saml20-clj](https://github.com/vlacs/saml20-clj) and 
 
 ## License
 
-Copyright © 2013 VLACS <jdoane@vlacs.org>
-Copyright © 2017 Kenji Nakamura <kenji@signifier.jp>
+* Copyright © 2013 VLACS <jdoane@vlacs.org>
+* Copyright © 2017 Kenji Nakamura <kenji@signifier.jp>
 
 Distributed under the Eclipse Public License, the same as Clojure.
