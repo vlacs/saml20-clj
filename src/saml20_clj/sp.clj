@@ -252,8 +252,8 @@
                           (.getAudienceRestrictions conditions))]
     {:attrs attrs :audiences audiences
      :name-id
-     {:value (.getValue name-id)
-      :format (.getFormat name-id)}
+     {:value (when name-id (.getValue name-id))
+      :format (when name-id(.getFormat name-id))}
      :confirmation
      {:in-response-to (.getInResponseTo subject-confirmation-data)
       :not-before (to-timestamp (.getNotBefore subject-confirmation-data))
