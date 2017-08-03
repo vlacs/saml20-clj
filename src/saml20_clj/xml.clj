@@ -27,9 +27,9 @@
   []
   (let [doc (DocumentBuilderFactory/newInstance)]
     (.setNamespaceAware doc true)
+    (.setFeature doc "http://xml.org/sax/features/external-general-entities" false)
     (.setFeature doc "http://xml.org/sax/features/external-parameter-entities" false)
     (.setFeature doc "http://apache.org/xml/features/nonvalidating/load-external-dtd" false)
-    (.setXIncludeAware doc false)
     (.setExpandEntityReferences doc false)
     (.newDocumentBuilder doc)))
 
