@@ -6,7 +6,7 @@ Tested with Microsoft Active Directory Federation Server (ADFS) as the identity 
 
 ## Installation
 
-Add ```[k2n/saml20-clj "0.1.7"]``` to your project dependencies.
+Add ```[kirasystems/saml20-clj "0.1.10"]``` to your project dependencies.
 
 ## Usage
 
