@@ -8,7 +8,7 @@
             [saml20-clj.shared :as shared]
             [saml20-clj.xml :as saml-xml]
             [clojure.data.zip.xml :as zf])
-  (:import [javax.xml.crypto]
+  (:import javax.xml.crypto
            [javax.xml.crypto.dsig XMLSignature XMLSignatureFactory]
            [javax.xml.crypto.dom]
            [org.apache.xml.security Init]
@@ -16,7 +16,7 @@
            [org.apache.xml.security.transforms Transforms]
            [org.apache.xml.security.c14n Canonicalizer]
            [javax.xml.crypto.dsig.dom DOMValidateContext]
-           [java.security]
+           java.security
            [javax.xml.parsers DocumentBuilderFactory]
            [org.w3c.dom Document]
            [org.w3c.dom NodeList]))
