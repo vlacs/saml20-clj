@@ -19,8 +19,7 @@
            [java.security]
            [javax.xml.parsers DocumentBuilderFactory]
            [org.w3c.dom Document]
-           [org.w3c.dom NodeList])
-  (:gen-class))
+           [org.w3c.dom NodeList]))
 
 ;;; These next 3 fns are defaults for storing SAML state in memory.
 (defn bump-saml-id-timeout!
