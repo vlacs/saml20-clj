@@ -10,7 +10,6 @@
             [clojure.data.zip.xml :as zf])
   (:import javax.xml.crypto
            [javax.xml.crypto.dsig XMLSignature XMLSignatureFactory]
-           javax.xml.crypto.dom
            [org.apache.xml.security Init]
            [org.apache.xml.security.utils Constants ElementProxy]
            [org.apache.xml.security.transforms Transforms]
